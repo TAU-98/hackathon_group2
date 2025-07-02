@@ -1,0 +1,12 @@
+
+
+**Eye-scan monitoring of decision strategies in multi-attribute choice.**
+This project aims to convert a MATLAB-based decision-making experiment into a fully functional
+Python version integrated with an eye-tracking system. Beyond code translation, it enables real-time
+collection and analysis of eye-movement data to investigate cognitive strategies in multi-attribute
+decision-making under time pressure. The implementation supports dynamic visualization, trial
+customization, and compatibility with open-source tools, increasing flexibility, reproducibility, and
+usability for future behavioral and neurocognitive research. This tool lays the groundwork for
+developing computational models based on gaze data, with potential applications in AI, human-
+computer interaction, and cognitive diagnostics.
+

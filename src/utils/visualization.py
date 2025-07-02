@@ -1,16 +1,69 @@
 import pygame
+import pygame.freetype
 
-def show_instruction_screen(screen, text, font, color, background):
+def show_demographics_form(screen, font, bg_color, accent_color):
     """
-    Display an instruction screen with centered text.
-    Args:
-        screen: pygame display surface
-        text: string to display
-        font: pygame font object
-        color: text color
-        background: background color
+    Display a demographics input form and return a dict with 'name', 'age', 'gender'.
     """
-    screen.fill(background)
+    fields = ['Name', 'Age', 'Gender']
+    responses = ['', '', '']
+    current = 0
+    running = True
+    clock = pygame.time.Clock()
+    while running:
+        screen.fill(bg_color)
+        # Title
+        title_font = pygame.font.SysFont('Arial Rounded MT Bold', 44)
+        title = title_font.render('Demographics', True, accent_color)
+        screen.blit(title, (screen.get_width()//2 - title.get_width()//2, 60))
+        # Draw input fields
+        for i, field in enumerate(fields):
+            label = font.render(field + ':', True, accent_color)
+            screen.blit(label, (screen.get_width()//2 - 200, 180 + i*80))
+            # Draw input box
+            box_rect = pygame.Rect(screen.get_width()//2 - 50, 175 + i*80, 300, 50)
+            pygame.draw.rect(screen, accent_color if i==current else (180,180,180), box_rect, 2, border_radius=10)
+            input_text = font.render(responses[i], True, accent_color)
+            screen.blit(input_text, (box_rect.x + 10, box_rect.y + 10))
+        # Instructions
+        instr = font.render('Press Enter to continue', True, accent_color)
+        screen.blit(instr, (screen.get_width()//2 - instr.get_width()//2, 450))
+        pygame.display.flip()
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit(); exit()
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_RETURN:
+                    if current < 2:
+                        current += 1
+                    else:
+                        running = False
+                elif event.key == pygame.K_BACKSPACE:
+                    responses[current] = responses[current][:-1]
+                elif event.key == pygame.K_TAB:
+                    current = (current + 1) % 3
+                else:
+                    if len(responses[current]) < 20 and event.unicode.isprintable():
+                        responses[current] += event.unicode
+        clock.tick(30)
+    return dict(zip(['name', 'age', 'gender'], responses))
+
+def draw_gradient(screen, top_color, bottom_color):
+    """
+    Draw a vertical gradient background from top_color to bottom_color.
+    """
+    height = screen.get_height()
+    for y in range(height):
+        ratio = y / height
+        color = [int(top_color[i] * (1 - ratio) + bottom_color[i] * ratio) for i in range(3)]
+        pygame.draw.line(screen, color, (0, y), (screen.get_width(), y))
+
+def show_instruction_screen(screen, text, font, color, background, title=None, accent_color=(255,255,0)):
+    draw_gradient(screen, background, (30,30,30))
+    if title:
+        title_font = pygame.font.SysFont('Arial Rounded MT Bold', 44)
+        title_surf = title_font.render(title, True, accent_color)
+        screen.blit(title_surf, (screen.get_width()//2 - title_surf.get_width()//2, 60))
     lines = text.split('\n')
     y_offset = screen.get_height() // 2 - (len(lines) * font.get_height()) // 2
     for i, line in enumerate(lines):
@@ -19,67 +72,80 @@ def show_instruction_screen(screen, text, font, color, background):
         screen.blit(rendered, rect)
     pygame.display.flip()
 
-def show_candidate_table(screen, attributes, weights, values_a, values_b, font, color, background):
+def show_candidate_table(screen, attributes, weights, values_a, values_b, font, color, background, title=None, accent_color=(0,200,255)):
     """
-    Display a table comparing two candidates (A and B) with attribute names, weights, and values.
-    Args:
-        screen: pygame display surface
-        attributes: list of attribute names
-        weights: list of weights
-        values_a: list of values for candidate A
-        values_b: list of values for candidate B
-        font: pygame font object
-        color: text color
-        background: background color
+    Display a large, visually clear candidate table with columns: Weight | Attribute | A | B, with weights listed vertically.
+    The 'Weight' header cell is shifted slightly left for better spacing.
     """
-    screen.fill(background)
+    draw_gradient(screen, background, (30,30,30))
+    if title:
+        title_font = pygame.font.SysFont('Arial Rounded MT Bold', 64)
+        title_surf = title_font.render(title, True, accent_color)
+        screen.blit(title_surf, (screen.get_width()//2 - title_surf.get_width()//2, 40))
     # Table header
-    header = ['Attribute', 'Weight', 'A', 'B']
-    col_widths = [200, 100, 100, 100]
-    start_x = (screen.get_width() - sum(col_widths)) // 2
-    start_y = screen.get_height() // 2 - (len(attributes) + 1) * font.get_height() // 2
-    # Draw header
+    header_font = pygame.font.SysFont('Arial Rounded MT Bold', 48)
+    cell_font = pygame.font.SysFont('Arial Rounded MT Bold', 44)
+    header = ['Weight', 'Attribute', 'A', 'B']
+    col_widths = [140, 320, 120, 120]
+    n_rows = len(attributes) + 1  # header + attribute rows
+    n_cols = 4
+    table_width = sum(col_widths)
+    table_height = (n_rows + 1) * 70 + 40
+    start_x = (screen.get_width() - table_width) // 2
+    start_y = screen.get_height() // 2 - table_height // 2 + 40
+    # Draw rounded rectangle background for table
+    table_rect = pygame.Rect(start_x-30, start_y-30, table_width+60, table_height+60)
+    pygame.draw.rect(screen, (40,40,60), table_rect, border_radius=28)
+    # Draw header row (centered, but shift 'Weight' left)
+    y = start_y
     for j, h in enumerate(header):
-        rendered = font.render(str(h), True, color)
-        rect = rendered.get_rect()
-        rect.topleft = (start_x + sum(col_widths[:j]), start_y)
+        cell_x = start_x + sum(col_widths[:j])
+        cell_w = col_widths[j]
+        rendered = header_font.render(h, True, accent_color)
+        if j == 0:
+            # Shift 'Weight' header left by 18 pixels
+            rect = rendered.get_rect(center=(cell_x + cell_w//2 - 18, y + 35))
+        else:
+            rect = rendered.get_rect(center=(cell_x + cell_w//2, y + 35))
         screen.blit(rendered, rect)
-    # Draw rows
+    # Draw horizontal line under header
+    pygame.draw.line(screen, accent_color, (start_x, y+70), (start_x+table_width, y+70), 5)
+    # Draw vertical borders for columns
+    for j in range(1, n_cols):
+        x = start_x + sum(col_widths[:j])
+        pygame.draw.line(screen, accent_color, (x, start_y), (x, start_y + (n_rows)*70), 4)
+    # Draw attribute rows (centered)
     for i, attr in enumerate(attributes):
-        row = [attr, str(weights[i]), str(values_a[i]), str(values_b[i])]
+        y = start_y + (i+1)*70
+        attr_label = ' '.join([w.capitalize() for w in attr.split()])
+        row = [str(weights[i]), attr_label, str(values_a[i]), str(values_b[i])]
         for j, val in enumerate(row):
-            rendered = font.render(val, True, color)
-            rect = rendered.get_rect()
-            rect.topleft = (start_x + sum(col_widths[:j]), start_y + (i + 1) * font.get_height())
+            cell_x = start_x + sum(col_widths[:j])
+            cell_w = col_widths[j]
+            rendered = cell_font.render(val, True, color)
+            rect = rendered.get_rect(center=(cell_x + cell_w//2, y + 35))
             screen.blit(rendered, rect)
+        # Draw horizontal line under each row
+        pygame.draw.line(screen, (100,100,120), (start_x, y+70), (start_x+table_width, y+70), 3)
     pygame.display.flip()
 
-def show_feedback(screen, message, font, color, background):
-    """
-    Display a feedback message (e.g., 'Correct', 'Incorrect', 'Too slow!').
-    Args:
-        screen: pygame display surface
-        message: feedback string
-        font: pygame font object
-        color: text color
-        background: background color
-    """
-    screen.fill(background)
+def show_feedback(screen, message, font, color, background, title=None, accent_color=(255,255,0)):
+    draw_gradient(screen, background, (30,30,30))
+    if title:
+        title_font = pygame.font.SysFont('Arial Rounded MT Bold', 44)
+        title_surf = title_font.render(title, True, accent_color)
+        screen.blit(title_surf, (screen.get_width()//2 - title_surf.get_width()//2, 60))
     rendered = font.render(message, True, color)
     rect = rendered.get_rect(center=(screen.get_width() // 2, screen.get_height() // 2))
     screen.blit(rendered, rect)
     pygame.display.flip()
 
-def show_score(screen, score, font, color, background):
-    """
-    Display the current score on the screen.
-    Args:
-        screen: pygame display surface
-        score: integer score
-        font: pygame font object
-        color: text color
-        background: background color
-    """
+def show_score(screen, score, font, color, background, title=None, accent_color=(255,255,0)):
+    draw_gradient(screen, background, (30,30,30))
+    if title:
+        title_font = pygame.font.SysFont('Arial Rounded MT Bold', 44)
+        title_surf = title_font.render(title, True, accent_color)
+        screen.blit(title_surf, (screen.get_width()//2 - title_surf.get_width()//2, 60))
     text = f"Your score is: {score}"
     rendered = font.render(text, True, color)
     rect = rendered.get_rect(center=(screen.get_width() // 2, screen.get_height() - 100))

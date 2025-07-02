@@ -1,0 +1,13 @@
+function Demographics=getSubjectData(fields)
+            
+            if nargin<1
+                fields={'Name', 'Age', 'Gender (M/F)','Hand (L/R)'};
+            end
+            
+            argindlg = inputdlg(fields);
+            for iField=1:size(fields,2)
+                firstWord=textscan(fields{iField},'%s');
+                Demographics.(firstWord{1,1}{1,1}) = argindlg{iField};
+            end
+            
+        end

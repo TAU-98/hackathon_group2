@@ -19,8 +19,8 @@ def run_madm_skewde_experiment(num_sets=2, num_trials=10, num_practice=2, break_
     results = []
     # Attribute names and weights for 3 and 4 attribute conditions
     attr_sets = [
-        (['intelligence', 'work ethic', 'easy to work with'], [3, 2, 1]),
-        (['intelligence', 'work ethic', 'easy to work with', 'creativity'], [4, 3, 2, 1])
+        (['intelligence', 'work ethic', 'sociable'], [3, 2, 1]),
+        (['intelligence', 'work ethic', 'sociable', 'creativity'], [4, 3, 2, 1])
     ]
     # Instructions
     instructions = [

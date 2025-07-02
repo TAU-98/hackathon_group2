@@ -1,0 +1,409 @@
+%Screen('Preference', 'SkipSyncTests', 1);
+clear;clc
+rng('shuffle');
+%Screen('Preference', 'SkipSyncTests', 1);%only for leptops
+DisableKeysForKbCheck(46);
+Subject_Number = input('Please enter the subject''s number\n');
+subjectDemograph = Demographics;
+SaveResults = ['Subject_' num2str(Subject_Number) '_Demographics.mat'];
+save(SaveResults, 'subjectDemograph');
+screenNum = 0;
+HideCursor;
+[wPtr, rect] = Screen('OpenWindow', screenNum, 1);%, [100,100,1000,900]);
+%% === EYELINK INIT ===
+dummymode = 0; % 0 = connect to EyeLink, 1 = dummy mode
+el = EyelinkInitDefaults(wPtr);
+if ~EyelinkInit(dummymode)
+    fprintf('Eyelink Init aborted.\n');
+    Screen('CloseAll');
+    return;
+end
+edfFile = ['sub_' num2str(Subject_Number) '.EDF'];
+status = Eyelink('Openfile', edfFile);
+if status ~= 0
+    fprintf('Cannot create EDF file %s\n', edfFile);
+    Eyelink('Shutdown');
+    Screen('CloseAll');
+    return;
+end
+EyelinkDoTrackerSetup(el);
+eye_used = Eyelink('EyeAvailable');
+Black = BlackIndex(wPtr);
+White = WhiteIndex(wPtr);
+CenterX = rect(3)/2;
+CenterY = rect(4)/2;
+Screen('TextFont', wPtr, 'David');
+Screen('TextSize', wPtr, 30);
+numOfSets = 2;
+numOfTrials = 100;%100
+numOfPractice = 10;%10
+breakTime = 25;
+numOfPoints = 0;
+rightKey = 'k';
+leftKey = 'd';
+imageDuration = 0.5;
+Matrix = cell(numOfSets,numOfTrials+numOfPractice);
+Correct = nan(numOfSets*(numOfTrials+numOfPractice),1);
+Differences = cell(numOfSets,numOfTrials);
+Screen_IDs = nan(numOfSets*(numOfTrials+numOfPractice),1);
+Sub_Acc = nan(numOfSets*numOfTrials,1);
+Time = nan(numOfSets*numOfTrials,1);
+Sub_Choice = nan(numOfSets*numOfTrials,1);
+Data = cell(1,11);
+%% Preparing all the experiment + practice stimuli
+for j = 1:numOfSets
+    for i = 1:numOfTrials+numOfPractice
+        Matrix{j,i} = randi(9,j+2,2);
+        %making sure that the alteratives has different WA
+        while (dot(Matrix{j,i}(:,1),(j+2:-1:1)) == dot(Matrix{j,i}(:,2),(j+2:-1:1)))
+            Matrix{j,i} = randi(9,j+2,2);
+        end
+        if dot(Matrix{j,i}(:,1),(j+2:-1:1)) > dot(Matrix{j,i}(:,2),(j+2:-1:1))
+            Correct(i+(numOfTrials+numOfPractice)*(j-1)) = 1;
+        else
+            Correct(i+(numOfTrials+numOfPractice)*(j-1)) = 2;
+        end
+    end
+end
+%Creating the differences matrix for the weights calculation later on
+for j = 1:numOfSets
+    for i = 1:numOfTrials
+        Differences{j,i} = Matrix{j,i+numOfPractice}(:,1)-Matrix{j,i+numOfPractice}(:,2);
+    end
+end
+%% Display Coordinates
+shiftX = 0.3191*CenterX;
+displacmentY = 0.1481*CenterY;
+frameRectX1 = 0.3125*CenterX + shiftX;
+frameRectY1 = 0.3704*CenterY;
+frameRectX2 = 1.0417*CenterX + shiftX;
+frameRectY2 = 0.9444*CenterY;
+horizontalLineX1 = frameRectX1;
+horizontalLineY1 = 0.5*CenterY;
+horizontalLineX2 = frameRectX2;
+verticalLineX11 = 0.5729*CenterX + shiftX;
+verticalLineX12 = 0.8073*CenterX + shiftX;
+verticalLineY1 = frameRectY1;
+verticalLineY2 = frameRectY2;
+dimNameStartingXaxis = 0.3344*CenterX + shiftX;
+dimNameStartingYaxis = 0.6019*CenterY;
+AnameStartingXaxis = 0.6750*CenterX + shiftX;
+BnameStartingXaxis = 0.9063*CenterX + shiftX;
+ABnameStartingYaxis = 0.4537*CenterY;
+dimNumStartingXaxisA =  0.6771*CenterX + shiftX;
+dimNumStartingXaxisB = 0.9115*CenterX + shiftX;
+dimNumStartingYaxisAB = 0.5833*CenterY;
+%% Preparing the screens off-screen
+for j = 1:numOfSets
+    for i = 1:numOfTrials+numOfPractice
+        Screen_IDs(i+(numOfTrials+numOfPractice)*(j-1)) = Screen('OpenOffscreenWindow', wPtr,1);
+        Screen('FrameRect', Screen_IDs(i+(numOfTrials+numOfPractice)*(j-1)),[White, White, Black],[frameRectX1 frameRectY1 frameRectX2 frameRectY2 + displacmentY*(j-1)],5);
+        for k = 1:(j+2)
+            Screen('DrawLine',Screen_IDs(i+(numOfTrials+numOfPractice)*(j-1)),[White, White, Black],horizontalLineX1,horizontalLineY1 + displacmentY*(k-1),horizontalLineX2,horizontalLineY1 + displacmentY*(k-1),5);
+        end
+        Screen('DrawLine',Screen_IDs(i+(numOfTrials+numOfPractice)*(j-1)),[White, White, Black],verticalLineX11,verticalLineY1,verticalLineX11,verticalLineY2 + displacmentY*(j-1),5);
+        Screen('DrawLine',Screen_IDs(i+(numOfTrials+numOfPractice)*(j-1)),[White, White, Black],verticalLineX12,verticalLineY1,verticalLineX12,verticalLineY2 + displacmentY*(j-1),5);
+        Screen('TextFont',Screen_IDs(i+(numOfTrials+numOfPractice)*(j-1)),'Times New Roman');
+        Screen('TextSize',Screen_IDs(i+(numOfTrials+numOfPractice)*(j-1)),20);
+        if j == 1
+            DrawFormattedText(Screen_IDs(i+(numOfTrials+numOfPractice)*(j-1)), 'intelligence - 3', dimNameStartingXaxis, dimNameStartingYaxis, [Black, White, Black]);
+            DrawFormattedText(Screen_IDs(i+(numOfTrials+numOfPractice)*(j-1)), 'work ethic - 2', dimNameStartingXaxis, dimNameStartingYaxis + displacmentY, [Black, White, Black]);
+            DrawFormattedText(Screen_IDs(i+(numOfTrials+numOfPractice)*(j-1)), 'easy to work with - 1', dimNameStartingXaxis, dimNameStartingYaxis + 2*displacmentY, [Black, White, Black]);
+        elseif j == 2
+            DrawFormattedText(Screen_IDs(i+(numOfTrials+numOfPractice)*(j-1)),'intelligence - 4',dimNameStartingXaxis,dimNameStartingYaxis,[Black, White, Black]);
+            DrawFormattedText(Screen_IDs(i+(numOfTrials+numOfPractice)*(j-1)),'work ethic - 3',dimNameStartingXaxis,dimNameStartingYaxis + displacmentY,[Black, White, Black]);
+            DrawFormattedText(Screen_IDs(i+(numOfTrials+numOfPractice)*(j-1)),'easy to work with - 2',dimNameStartingXaxis,dimNameStartingYaxis + 2*displacmentY,[Black, White, Black]);
+            DrawFormattedText(Screen_IDs(i+(numOfTrials+numOfPractice)*(j-1)),'creativity - 1',dimNameStartingXaxis,dimNameStartingYaxis + 3*displacmentY,[Black, White, Black]);
+        else
+            DrawFormattedText(Screen_IDs(i+(numOfTrials+numOfPractice)*(j-1)),'intelligence - 5', dimNameStartingXaxis,dimNameStartingYaxis, [Black, White, Black]);
+            DrawFormattedText(Screen_IDs(i+(numOfTrials+numOfPractice)*(j-1)),'work ethic - 4', dimNameStartingXaxis,dimNameStartingYaxis + displacmentY,[Black, White, Black]);
+            DrawFormattedText(Screen_IDs(i+(numOfTrials+numOfPractice)*(j-1)),'easy to work with - 3', dimNameStartingXaxis,dimNameStartingYaxis + 2*displacmentY,[Black, White, Black]);
+            DrawFormattedText(Screen_IDs(i+(numOfTrials+numOfPractice)*(j-1)),'creativity - 2', dimNameStartingXaxis,dimNameStartingYaxis + 3*displacmentY,[Black, White, Black]);
+            DrawFormattedText(Screen_IDs(i+(numOfTrials+numOfPractice)*(j-1)),'sociability - 1', dimNameStartingXaxis,dimNameStartingYaxis + 4*displacmentY,[Black, White, Black]);
+        end
+        Screen('TextSize', Screen_IDs(i+(numOfTrials+numOfPractice)*(j-1)),30);
+        DrawFormattedText(Screen_IDs(i+(numOfTrials+numOfPractice)*(j-1)),'A', AnameStartingXaxis,ABnameStartingYaxis,[White, Black, Black]);
+        DrawFormattedText(Screen_IDs(i+(numOfTrials+numOfPractice)*(j-1)),'B', BnameStartingXaxis,ABnameStartingYaxis,[White, Black, Black]);
+        for k = 1:(j+2)
+            DrawFormattedText(Screen_IDs(i+(numOfTrials+numOfPractice)*(j-1)),num2str(Matrix{j,i}(k,1)),dimNumStartingXaxisA,dimNumStartingYaxisAB + displacmentY*(k-1),[Black, White, Black]);
+            DrawFormattedText(Screen_IDs(i+(numOfTrials+numOfPractice)*(j-1)),num2str(Matrix{j,i}(k,2)),dimNumStartingXaxisB,dimNumStartingYaxisAB + displacmentY*(k-1),[Black, White, Black]);
+        end
+    end
+end
+%% Instructions
+Screen_1 = 'Screen1.png';
+Screen_3 = 'Screen3.png';
+Screen1 = imread(Screen_1, 'png');
+Screen3 = imread(Screen_3, 'png');
+Screen(wPtr, 'PutImage', Screen1);
+Screen('Flip', wPtr);
+KbWait;
+WaitSecs(imageDuration);
+Instructions1 = imread('Screen16.jpg');
+TexturePointer1 = Screen('MakeTexture',wPtr, Instructions1);
+clear Instructions;
+Screen('DrawTexture',wPtr, TexturePointer1);
+Screen('Flip', wPtr);
+KbWait;
+WaitSecs(imageDuration);
+Screen(wPtr, 'PutImage', Screen3);
+Screen('Flip', wPtr);
+KbWait
+WaitSecs(imageDuration);
+%% possible feedbacks and messages
+Cool = 'Correct';
+Not_Cool = 'Incorrect';
+Too_Long = 'Too slow!';
+Number_Points = 'Your score is:';
+Space = ' ';
+Continue = 'Press any key to continue';
+%% starting the experiment
+for j = 1:numOfSets
+    if j == 1
+        stoper = 3;
+        Instructions = imread('4DIM.jpg');
+    elseif j == 2
+        stoper = 4;
+        Instructions = imread('4DIM.jpg');
+    else
+        stoper = 5;
+        Instructions = imread('4DIM.jpg');
+    end
+    TexturePointer = Screen('MakeTexture',wPtr, Instructions);
+    clear Instructions;
+    Screen('DrawTexture',wPtr, TexturePointer);
+    Screen('Flip', wPtr);
+    KbWait;
+    WaitSecs(imageDuration);
+    %% === START EYELINK BLOCK RECORDING ===
+    Eyelink('StartRecording');
+    WaitSecs(0.1);
+    Eyelink('message', ['START BLOCK ' num2str(j)]);
+    %% practice trials
+    for i = 1:numOfPractice
+        logic = 0;
+        timer = 0;
+        StartSecs = GetSecs;
+        Eyelink('message', sprintf('TRIAL %d PRACTICE %d', i, j));
+        while ~logic
+            Screen('CopyWindow', Screen_IDs(i+(numOfTrials+numOfPractice)*(j-1)), wPtr);
+            [~,TimeSecs] = Screen('Flip', wPtr);
+            Eyelink('message','Stimulus ON');
+            FlushEvents('keyDown')
+            timer = TimeSecs-StartSecs;
+            if timer > stoper
+                DrawFormattedText(wPtr, double(Too_Long), 'center', 'center', [Black, Black, White]);
+                Eyelink('message','Stimulus OFF');
+                break;
+            end
+            %collecting subject's responses
+            [~, TimeSecs, KeyCode] = KbCheck;
+            Practice_Time = TimeSecs-StartSecs;
+            checkMyAns = length(KbName(KeyCode)) == 1;%number of key press is 1
+            if checkMyAns
+                logic = (strcmp(KbName(KeyCode),leftKey) | (strcmp(KbName(KeyCode),rightKey)));
+            else
+                logic = 0;
+            end
+            
+            if logic
+                Eyelink('message','Stimulus OFF');
+                if strcmp(KbName(KeyCode),leftKey)
+                    Eyelink('message','RESPONSE LEFT');
+                    dummySubAnswer = 1;
+                else
+                    Eyelink('message','RESPONSE RIGHT');
+                    dummySubAnswer = 2;
+                end
+                if Correct(i+(numOfTrials+numOfPractice)*(j-1)) == dummySubAnswer
+                    DrawFormattedText(wPtr, double(Cool), 'center', 'center', [Black, White, Black]);
+                else
+                    DrawFormattedText(wPtr, double(Not_Cool), 'center', 'center', [White, Black, Black]);
+                end
+                WaitSecs(imageDuration);
+            end
+        end
+        DrawFormattedText(wPtr, double(Continue), 'center', 900, [White, Black, Black]);
+        Screen('Flip', wPtr);
+        KbWait;
+        WaitSecs(imageDuration);
+        Screen('Close',Screen_IDs(i+(numOfTrials+numOfPractice)*(j-1)))
+    end
+    %practice is done
+    endPrac = imread('exp.jpg');
+    TexturePointerEndPrac = Screen('MakeTexture',wPtr, endPrac);
+    clear endPrac;
+    Screen('DrawTexture',wPtr, TexturePointerEndPrac);
+    Screen('Flip', wPtr);
+    KbWait;
+    WaitSecs(imageDuration);
+    %% Experiment trials
+    for i = 1:numOfTrials
+        logic = 0;
+        timer = 0;
+        StartSecs = GetSecs;
+        Eyelink('message', sprintf('TRIAL %d SET %d', i, j));
+        while ~logic
+            Screen('CopyWindow', Screen_IDs(i+numOfPractice+(numOfTrials+numOfPractice)*(j-1)), wPtr);
+            [~,TimeSecs] = Screen('Flip', wPtr);
+            Eyelink('message','Stimulus ON');
+            FlushEvents('keyDown')
+            timer = TimeSecs-StartSecs;
+            if timer > stoper
+                DrawFormattedText(wPtr, double(Too_Long), 'center', 'center', [Black, Black, White]);
+                Eyelink('message','Stimulus OFF');
+                break;
+            end
+            %collecting subject's responses
+            [~, TimeSecs, KeyCode] = KbCheck;
+            Time(i+numOfTrials*(j-1)) = TimeSecs-StartSecs;
+            checkMyAns = length(KbName(KeyCode)) == 1;%number of key press is 1
+            if checkMyAns
+                logic = (strcmp(KbName(KeyCode),leftKey) | (strcmp(KbName(KeyCode),rightKey)));
+            else
+                logic = 0;
+            end
+            if logic
+                Eyelink('message','Stimulus OFF');
+                if strcmp(KbName(KeyCode),leftKey)
+                    Eyelink('message','RESPONSE LEFT');
+                    dummySubAnswer = 1;
+                else
+                    Eyelink('message','RESPONSE RIGHT');
+                    dummySubAnswer = 2;
+                end
+                Sub_Choice(i+numOfTrials*(j-1)) = dummySubAnswer;
+                Sub_Acc(i+numOfTrials*(j-1)) = Correct(i+numOfPractice+(numOfTrials+numOfPractice)*(j-1)) == dummySubAnswer;
+                if Sub_Acc(i+numOfTrials*(j-1))
+                    DrawFormattedText(wPtr, double(Cool), 'center', 'center', [Black, White, Black]);
+                    numOfPoints = numOfPoints + 1;
+                else
+                    DrawFormattedText(wPtr, double(Not_Cool), 'center', 'center', [White, Black, Black]);
+                end
+                WaitSecs(imageDuration);
+            end
+        end
+        Points = [Number_Points Space num2str(numOfPoints)];
+        DrawFormattedText(wPtr,double(Points), 'center', 700, [White, White, Black]);
+        DrawFormattedText(wPtr, double(Continue), 'center', 900, [White, Black, Black]);
+        Screen('Flip', wPtr);
+        KbWait;
+        WaitSecs(imageDuration);
+        Screen('Close',Screen_IDs(i+numOfPractice+(numOfTrials+numOfPractice)*(j-1)))
+        if mod(i,breakTime) == 0 && (i+numOfTrials*(j-1)) ~= numOfTrials && (i+numOfTrials*(j-1)) ~= 2*numOfTrials && (i+numOfTrials*(j-1)) ~= 3*numOfTrials
+            breakImg = imread('break.jpg');
+            TexturePointerBreak = Screen('MakeTexture',wPtr, breakImg);
+            clear breakImg;
+            Screen('DrawTexture',wPtr, TexturePointerBreak);
+            Screen('Flip', wPtr);
+            KbWait;
+            WaitSecs(2*imageDuration);
+        end
+        %% Saving the data (each trial)
+        %saving the actual correct answers on each trial
+        Data{1}{1} = 'The correct alternatives';
+        Data{1}{2} = Correct(1:j*numOfPractice+i+numOfTrials*(j-1));
+        %saving the subject's responses
+        Data{2}{1} = 'Subject''s response pattern';
+        Data{2}{2} = Sub_Choice(1:i+numOfTrials*(j-1));
+        %saving subject's accuracy on each trial
+        Data{3}{1} = 'Subject''s accuracy on each trial';
+        Data{3}{2} = Sub_Acc(1:i+numOfTrials*(j-1));
+        %saving the RT on each trial
+        Data{4}{1} = 'Subjects''s RT on each trial';
+        Data{4}{2} = Time(1:i+numOfTrials*(j-1));
+        %saving the stimuli presented on each trial
+        Data{5}{1} = 'The stimuli presented on each trial';
+        for jj = 1:j
+            for ii = 1:i+numOfPractice
+                Data{5}{ii+1+(numOfTrials+numOfPractice)*(jj-1)} = Matrix{jj,ii};
+            end
+        end
+        %% Saving the data onto a file
+        SaveResults = ['Subject_' num2str(Subject_Number) '_Results_WADD_Variable_Attributes_OCD.mat'];
+        fopen(SaveResults,'wt');
+        save(SaveResults, 'Data');
+    end
+    %% Saving the data (each block)
+    %saving subject's mean accuracy and mean RT
+    if j == 1
+        Data{6}{1} = 'Subject''s accuracy for 3 attributes';
+        acc3 = Sub_Acc(1:numOfTrials);
+        Data{6}{2} = mean(acc3(~isnan(acc3)));
+        Data{7}{1} = 'Subjects''s average RT, 3 attributes';
+        Time3  = Time(1:numOfTrials);
+        Data{7}{2} = mean(Time3(~isnan(acc3)));
+    elseif j == 2
+        Data{8}{1} = 'Subject''s accuracy for 4 attributes';
+        acc4 = Sub_Acc(numOfTrials+1:2*numOfTrials);
+        Data{8}{2} = mean(acc4(~isnan(acc4)));
+        Data{9}{1} = 'Subjects''s average RT, 4 attributes';
+        Time4 = Time(numOfTrials+1:2*numOfTrials);
+        Data{9}{2} = mean(Time4(~isnan(acc4)));
+    end
+    %% Saving the data onto a file
+    SaveResults = ['Subject_' num2str(Subject_Number) '_Results_WADD_Variable_Attributes_OCD.mat'];
+    fopen(SaveResults,'wt');
+    save(SaveResults, 'Data');
+    %% === END EYELINK BLOCK RECORDING ===
+    Eyelink('Stoprecording');
+    Eyelink('message', 'END BLOCK');
+end
+%% Saving the data (data analysis)
+Subject_Choice = Sub_Choice;
+Subject_Choice(Subject_Choice == 2) = 0;
+Data{10}{1} = 'The weights for 3 attributes';
+Diff_3 = nan(sum(~isnan(acc3)),3);
+logi3 = ~isnan(acc3);
+I = 1;
+for i = 1:numOfTrials
+    if logi3(i)
+        Diff_3(I,:) = Differences{1,i};
+        I = I + 1;
+    end
+end
+choice3 = Subject_Choice(1:numOfTrials);
+[Weights, ~, ~] = glmfit(Diff_3, choice3(~isnan(choice3)), 'binomial');
+for i = 1:3
+    Data{10}{i+1} = Weights(i+1);
+end
+Data{11}{1} = 'The weights for 4 attributes';
+Diff_4 = nan(sum(~isnan(acc4)),4);
+logi4 = ~isnan(acc4);
+I = 1;
+for i = 1:numOfTrials
+    if logi4(i)
+        Diff_4(I,:) = Differences{2,i};
+        I = I + 1;
+    end
+end
+choice4 = Subject_Choice(numOfTrials+1:2*numOfTrials);
+[Weights, Dev, Stats] = glmfit(Diff_4, choice4(~isnan(choice4)), 'binomial');
+for i = 1:4
+    Data{11}{i+1} = Weights(i+1);
+end
+%% Saving the data onto a file
+SaveResults = ['Subject_' num2str(Subject_Number) '_Results_WADD_Variable_Attributes_OCD.mat'];
+fopen(SaveResults,'wt');
+save(SaveResults, 'Data');
+%% End
+endExp = imread('end.jpg');
+TexturePointerEnd = Screen('MakeTexture',wPtr, endExp);
+clear endExp;
+Screen('DrawTexture',wPtr, TexturePointerEnd);
+Screen('Flip', wPtr);
+KbWait;
+WaitSecs(2*imageDuration);
+% === EYELINK SHUTDOWN ===
+Eyelink('Stoprecording');
+Eyelink('CloseFile');
+status = Eyelink('ReceiveFile');
+if status > 0
+    fprintf('Data file received: %s\n', edfFile);
+else
+    fprintf('Error receiving data file.\n');
+end
+Eyelink('Shutdown');
+
+Screen('CloseAll');
+ShowCursor;

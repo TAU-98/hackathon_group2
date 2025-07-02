@@ -1,0 +1,12 @@
+% This function output a cell with numOfTrials matricies of size
+% numAttributesX2. The inputs: numAttributes is how many rows (attributes) are in each
+% matrix. numOfTrials is the number of matricies you want to create. 
+function stimuli = stimuli_generator_MADM(numAttributes,numOfTrials)
+stimuli = cell(numOfTrials,1);
+    for i = 1:numOfTrials
+        stimuli{i} = randi(9,numAttributes,2);
+        %making sure that the alteratives has different WA
+        while (dot(stimuli{i}(:,1),(numAttributes:-1:1)) == dot(stimuli{i}(:,2),(numAttributes:-1:1)))
+            stimuli{i} = randi(9,numAttributes,2);
+        end
+    end

@@ -4,7 +4,7 @@ import time
 import json
 from src.experiment.stimuli_generator import stimuli_generator_madm
 from src.utils.visualization import (
-    show_instruction_screen, show_candidate_table, show_feedback, show_score
+    show_instruction_screen, show_candidate_table, show_feedback, show_score, show_demographics_form
 )
 
 # Mock eye-tracking integration
@@ -24,8 +24,8 @@ def initialize_experiment():
     """
     pass
 
-def run_trial(screen, font, mat, attributes, weights, text_color, bg_color, feedback_color, tracker, practice=False):
-    show_candidate_table(screen, attributes, weights, mat[:, 0], mat[:, 1], font, text_color, bg_color)
+def run_trial(screen, font, mat, attributes, weights, text_color, bg_color, feedback_color, tracker, accent_color, title, practice=False):
+    show_candidate_table(screen, attributes, weights, mat[:, 0], mat[:, 1], font, text_color, bg_color, title=title, accent_color=accent_color)
     pygame.event.clear()
     start_time = time.time()
     response = None
@@ -58,12 +58,12 @@ def run_trial(screen, font, mat, attributes, weights, text_color, bg_color, feed
                 tracker.send_message('RESPONSE RIGHT')
             correct = (response == correct_ans)
             msg = 'Correct' if correct else 'Incorrect'
-            show_feedback(screen, msg, font, feedback_color if not correct else text_color, bg_color)
+            show_feedback(screen, msg, font, feedback_color if not correct else text_color, bg_color, title='Feedback', accent_color=accent_color)
             pygame.time.wait(800)
             break
         if time.time() - start_time > timeout:
             tracker.send_message('Stimulus OFF')
-            show_feedback(screen, 'Too slow!', font, feedback_color, bg_color)
+            show_feedback(screen, 'Too slow!', font, feedback_color, bg_color, title='Feedback', accent_color=accent_color)
             pygame.time.wait(800)
             correct = False
             response = None
@@ -94,52 +94,56 @@ def run_experiment(num_sets=2, num_trials=10, num_practice=2, break_time=5):
     pygame.init()
     screen = pygame.display.set_mode((1000, 700))
     pygame.display.set_caption('MADM Main Experiment (Eye-Tracking)')
-    font = pygame.font.SysFont('Arial', 32)
-    bg_color = (0, 0, 0)
+    font = pygame.font.SysFont('Arial Rounded MT Bold', 32)
+    bg_color = (10, 10, 20)
     text_color = (255, 255, 0)
     feedback_color = (255, 0, 0)
+    accent_color = (0, 200, 255)
     clock = pygame.time.Clock()
     results = []
     tracker = EyeTracker()
+    # --- Demographics section ---
+    demographics = show_demographics_form(screen, font, bg_color, accent_color)
+    # ---
     attr_sets = [
-        (['intelligence', 'work ethic', 'easy to work with'], [3, 2, 1]),
-        (['intelligence', 'work ethic', 'easy to work with', 'creativity'], [4, 3, 2, 1])
+        (['intelligence', 'work ethic', 'sociable'], [3, 2, 1]),
+        (['intelligence', 'work ethic', 'sociable', 'creativity'], [4, 3, 2, 1])
     ]
     instructions = [
         "Welcome to the experiment!\nPress any key to continue.",
         "You will see pairs of candidates.\nChoose the better one using D (left) or K (right).\nPress any key to start practice."
     ]
     for text in instructions:
-        show_instruction_screen(screen, text, font, text_color, bg_color)
+        show_instruction_screen(screen, text, font, text_color, bg_color, title='Instructions', accent_color=accent_color)
         wait_for_key()
     for set_idx in range(num_sets):
         attributes, weights = attr_sets[set_idx]
         tracker.start_recording()
         tracker.send_message(f'START BLOCK {set_idx+1}')
         # Practice
-        show_instruction_screen(screen, f"Practice: {len(attributes)} attributes\nPress any key to start.", font, text_color, bg_color)
+        show_instruction_screen(screen, f"Practice: {len(attributes)} attributes\nPress any key to start.", font, text_color, bg_color, title='Practice', accent_color=accent_color)
         wait_for_key()
         practice_stimuli = stimuli_generator_madm(len(attributes), num_practice)
         for mat in practice_stimuli:
-            run_trial(screen, font, mat, attributes, weights, text_color, bg_color, feedback_color, tracker, practice=True)
-        show_instruction_screen(screen, "Practice complete!\nPress any key to continue.", font, text_color, bg_color)
+            run_trial(screen, font, mat, attributes, weights, text_color, bg_color, feedback_color, tracker, accent_color, title='Practice Trial', practice=True)
+        show_instruction_screen(screen, "Practice complete!\nPress any key to continue.", font, text_color, bg_color, title='Practice', accent_color=accent_color)
         wait_for_key()
         # Main trials
-        show_instruction_screen(screen, f"Main trials: {len(attributes)} attributes\nPress any key to start.", font, text_color, bg_color)
+        show_instruction_screen(screen, f"Main trials: {len(attributes)} attributes\nPress any key to start.", font, text_color, bg_color, title='Main Trials', accent_color=accent_color)
         wait_for_key()
         stimuli = stimuli_generator_madm(len(attributes), num_trials)
         for i, mat in enumerate(stimuli):
             tracker.send_message(f'TRIAL {i+1} SET {set_idx+1}')
-            res = run_trial(screen, font, mat, attributes, weights, text_color, bg_color, feedback_color, tracker, practice=False)
+            res = run_trial(screen, font, mat, attributes, weights, text_color, bg_color, feedback_color, tracker, accent_color, title='Trial', practice=False)
             results.append(res)
             if (i + 1) % break_time == 0 and (i + 1) != num_trials:
-                show_instruction_screen(screen, "Break!\nPress any key to continue.", font, text_color, bg_color)
+                show_instruction_screen(screen, "Break!\nPress any key to continue.", font, text_color, bg_color, title='Break', accent_color=accent_color)
                 wait_for_key()
         tracker.stop_recording()
         tracker.send_message('END BLOCK')
     # Save results
-    save_results({'results': results, 'eye_tracking': tracker.events}, 'main_experiment_results.json')
-    show_instruction_screen(screen, "Experiment complete!\nThank you!", font, text_color, bg_color)
+    save_results({'demographics': demographics, 'results': results, 'eye_tracking': tracker.events}, 'main_experiment_results.json')
+    show_instruction_screen(screen, "Experiment complete!\nThank you!", font, text_color, bg_color, title='End', accent_color=accent_color)
     pygame.time.wait(2000)
     pygame.quit()
 
