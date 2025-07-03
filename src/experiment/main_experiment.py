@@ -4,7 +4,7 @@ import time
 import json
 from utils.stimuli_generator import stimuli_generator_madm
 from src.utils.visualization import Visualization
-from src.experiment.Enums import Colors, Consts
+from utils.Enums import Colors, Consts
 
 # Mock eye-tracking integration
 class EyeTracker:
@@ -200,7 +200,7 @@ class MainExperiment:
                 self.wait_for_key()
 
     @staticmethod
-    def save_results(data:dict, filename:str):
+    def save_results(data:dict, filename):
         """
         Save experiment results to a JSON file.
         """

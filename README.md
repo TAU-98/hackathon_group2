@@ -25,22 +25,24 @@ This project is a Python-based implementation of a multi-attribute decision-maki
 ## Usage
 - To run the main experiment (with eye-tracking mocked):
   ```python
-  from src.experiment.main_experiment import run_experiment
-  run_experiment()
+  from src.experiment.main_experiment import MainExperiment
+  experiment = MainExperiment(use_eye_tracker=True)
+  experiment.run_experiment()
   ```
 - To run the MADM skewed experiment (no eye-tracking):
   ```python
-  from src.experiment.madm_skewde import run_madm_skewde_experiment
-  run_madm_skewde_experiment()
+  from src.experiment.madm_skewde import MainExperiment
+  experiment = MainExperiment(use_eye_tracker=False)
+  experiment.run_experiment()
   ```
 - To generate stimuli:
   ```python
-  from src.experiment.stimuli_generator import stimuli_generator_madm
+  from utils.stimuli_generator import stimuli_generator_madm
   stimuli = stimuli_generator_madm(num_attributes=4, num_trials=10)
   ```
 - To collect demographics:
   ```python
-  from src.experiment.demographics import collect_demographics, save_demographics
+  from utils.demographics import collect_demographics, save_demographics
   demo = collect_demographics()
   save_demographics(demo, 'demographics.json')
   ```
@@ -60,14 +62,14 @@ hackathon/
 ├── src/
 │   ├── experiment/
 │   │   ├── main_experiment.py
-│   │   ├── madm_skewde.py
+│   └── utils/
+│   │   ├── visualization.py
 │   │   ├── demographics.py
 │   │   └── stimuli_generator.py
-│   └── utils/
-│       └── visualization.py
+│   │   └── Enums.py
+
 ├── tests/
 │   ├── test_main_experiment.py
-│   ├── test_madm_skewde.py
 │   ├── test_demographics.py
 │   └── test_stimuli_generator.py
 └── assets/

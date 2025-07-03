@@ -1,6 +1,6 @@
 import pygame
 import pygame.freetype
-from src.experiment.Enums import Consts
+from utils.Enums import Consts
 
 class Visualization:
 
