@@ -2,9 +2,9 @@ import numpy as np
 import pygame
 import time
 import json
-from src.experiment.stimuli_generator import stimuli_generator_madm
+from utils.stimuli_generator import stimuli_generator_madm
 from src.utils.visualization import Visualization
-from src.experiment.Enums import Consts, Colors
+from src.experiment.Enums import Colors
 
 class MadmSkewde:
 
