@@ -1,6 +1,5 @@
 import numpy as np
-import pytest
-from src.experiment.stimuli_generator import stimuli_generator_madm
+from utils.stimuli_generator import stimuli_generator_madm
 
 def test_stimuli_generator_madm():
     num_attributes = 4

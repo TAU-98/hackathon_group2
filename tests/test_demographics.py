@@ -1,6 +1,5 @@
-import os
 import json
-from src.experiment.demographics import save_demographics
+from utils.demographics import save_demographics
 
 def test_save_demographics(tmp_path):
     demographics = {'name': 'Alice', 'age': '30', 'gender': 'Female'}
@@ -11,7 +10,7 @@ def test_save_demographics(tmp_path):
     assert loaded == demographics
 
 def test_collect_demographics(monkeypatch):
-    from src.experiment.demographics import collect_demographics
+    from utils.demographics import collect_demographics
     inputs = iter(['Bob', '25', 'Male'])
     monkeypatch.setattr('builtins.input', lambda _: next(inputs))
     demo = collect_demographics()
