@@ -2,8 +2,8 @@ import numpy as np
 import pygame
 import time
 import json
-from src.experiment.stimuli_generator import stimuli_generator_madm
-from src.utils.visualization import (
+from experiment.stimuli_generator import stimuli_generator_madm
+from utils.visualization import (
     show_instruction_screen, show_candidate_table, show_feedback, show_score, show_demographics_form
 )
 
