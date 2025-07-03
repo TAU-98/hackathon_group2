@@ -80,10 +80,5 @@ hackathon/
 - The GUI and eye-tracking integration are currently mocked or in skeleton form. See code comments for extension points.
 - For full experiment visuals, see the provided images in the assets/images directory.
 
-## Hackathon Grading Criteria
-- **Code Quality**: Modular, PEP8-compliant, documented, and tested.
-- **Functionality**: All core experiment logic is implemented and testable.
-- **Documentation**: This README and in-code docstrings.
-
 ---
 For questions or contributions, please contact the project maintainer. 
